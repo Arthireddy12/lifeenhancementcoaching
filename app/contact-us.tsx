@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -7,13 +8,40 @@ import { ScreenShell } from '@/components/screen-shell';
 import { contactInfo, supportImage } from '@/constants/content';
 import { fonts, palette } from '@/constants/theme';
 
-const contactApiUrl =
-  process.env.EXPO_PUBLIC_CONTACT_API_URL ||
-  (Platform.OS === 'web'
-    ? '/api/contact'
-    : Platform.OS === 'android'
-      ? 'http://10.0.2.2:4000/api/contact'
-      : 'http://localhost:4000/api/contact');
+function getContactApiUrl() {
+  const configuredUrl = process.env.EXPO_PUBLIC_CONTACT_API_URL?.trim();
+
+  if (Platform.OS === 'web') {
+    return configuredUrl && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(configuredUrl)
+      ? configuredUrl
+      : '/api/contact';
+  }
+
+  if (configuredUrl && !/^https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:\d+)?/i.test(configuredUrl)) {
+    return configuredUrl;
+  }
+
+  const hostUri =
+    Constants.expoConfig?.hostUri ??
+    Constants.manifest2?.extra?.expoGo?.debuggerHost ??
+    Constants.manifest2?.debuggerHost;
+
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+
+    if (host) {
+      return `http://${host}:4000/api/contact`;
+    }
+  }
+
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:4000/api/contact';
+  }
+
+  return 'http://localhost:4000/api/contact';
+}
+
+const contactApiUrl = getContactApiUrl();
 
 export default function ContactUsScreen() {
   const [name, setName] = useState('');
